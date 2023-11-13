@@ -14,6 +14,10 @@ public class AdministrativeRecord {
         this.paymentAmount = paymentAmount;
     }
 
+    public AdministrativeRecord() {
+
+    }
+
     public String getPatientName() {
         return patientName;
     }
@@ -67,7 +71,7 @@ public class AdministrativeRecord {
     }
 
     // 4. Delete (menghapus catatan administrasi)
-    public void deleteAdministrativeRecordFromDatabase(String patientName) {
+    public static void deleteAdministrativeRecordFromDatabase(String patientName) {
         Connection connection = Koneksi.getKoneksi();
         String sql = "DELETE FROM AdministrativeRecord WHERE patientName = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

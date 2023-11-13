@@ -17,7 +17,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 
-
 public class HospitalManagementApp {
     private JFrame frame;
     private List<String> doctors;
@@ -25,11 +24,14 @@ public class HospitalManagementApp {
     private List<String> medicines;
     private List<String> diagnoses;
     private JTable registrationTable;
+    
     private DefaultTableModel tableModel;
     private DefaultTableModel doctorTableModel;
     private DefaultTableModel nurseTableModel;
     private DefaultTableModel medicineTableModel;
     private DefaultTableModel diagnosisTableModel;
+    private JTable adminTable;
+    private DefaultTableModel adminTableModel;
 
     public HospitalManagementApp() {
         frame = new JFrame("Aplikasi Manajemen Rumah Sakit");
@@ -679,6 +681,17 @@ public class HospitalManagementApp {
 
         String[] columnNames = { "Nama Pasien", "Tanggal Lahir", "Alamat" };
         tableModel = new DefaultTableModel(columnNames, 0);
+
+        // Get all patients from the database
+        Patient patientManager = new Patient(); // Use the default constructor
+        List<Patient> patients = patientManager.getAllPatientsFromDatabase();
+
+        // Add patient data to the table model
+        for (Patient patient : patients) {
+            Object[] rowData = {patient.getName(), patient.getDateOfBirth(), patient.getAddress()};
+            tableModel.addRow(rowData);
+        }
+
         registrationTable = new JTable(tableModel);
         JScrollPane tableScrollPane = new JScrollPane(registrationTable);
 
@@ -760,17 +773,18 @@ public class HospitalManagementApp {
                 public void actionPerformed(ActionEvent e) {
                     int selectedRow = registrationTable.getSelectedRow();
                     if (selectedRow >= 0) {
+                        String originalName = (String) tableModel.getValueAt(selectedRow, 0); // Get the original name from the table
                         String updatedName = nameField.getText();
                         String updatedDOB = dobField.getText();
                         String updatedAddress = addressField.getText();
 
-                        // Buat objek Patient
-                        Patient existingPatient = new Patient(updatedName, updatedDOB, updatedAddress);
+                        // Create an object of Patient with existing data
+                        Patient existingPatient = new Patient(originalName, "", "");
 
-                        // Panggil metode untuk mengupdate data pasien
+                        // Call the method to update patient data in the database
                         existingPatient.updatePatientInDatabase(updatedName, updatedDOB, updatedAddress);
 
-                        // Perbarui data dalam tabel
+                        // Update data in the table model
                         tableModel.setValueAt(updatedName, selectedRow, 0);
                         tableModel.setValueAt(updatedDOB, selectedRow, 1);
                         tableModel.setValueAt(updatedAddress, selectedRow, 2);
@@ -813,7 +827,7 @@ public class HospitalManagementApp {
         panel.setLayout(new GridBagLayout());
 
         GridBagConstraints constraints = new GridBagConstraints();
-        constraints.insets = new Insets(5, 5, 5, 5);
+        constraints.insets = new Insets(10, 10, 10, 10); // Meningkatkan inset
         constraints.anchor = GridBagConstraints.WEST;
 
         JLabel titleLabel = new JLabel("Pencatatan Pembayaran Administrasi");
@@ -853,17 +867,157 @@ public class HospitalManagementApp {
 
                 // Handle pencatatan pembayaran administrasi pasien
                 JOptionPane.showMessageDialog(frame, "Pembayaran administrasi pasien " + patientName + " sebesar " + adminPayment + " berhasil dicatat.");
+
                 // Buat objek AdministrativeRecord dan tambahkan ke ArrayList administrativeRecords
                 AdministrativeRecord adminRecord = new AdministrativeRecord(patientName, Double.parseDouble(adminPayment));
+
                 // Simpan data di database
                 adminRecord.addAdministrativeRecordToDatabase(adminRecord);
-                administrativeRecords.add(adminRecord);
+
+                // Update the table model
+                Object[] rowData = { adminRecord.getPatientName(), adminRecord.getPaymentAmount() };
+                adminTableModel.addRow(rowData);
+
+                // Refresh the JTable
+                adminTable.setModel(adminTableModel);
 
                 patientNameField.setText("");
                 adminPaymentField.setText("");
             }
         });
+
+        // Your existing code for addAdministrasiPanelComponents method
+        String[] columnNames = { "Nama Pasien", "Pembayaran Administrasi (Rp)" };
+        adminTableModel = new DefaultTableModel(columnNames, 0);
+
+        // Get all administrative records from the database
+        AdministrativeRecord adminManager = new AdministrativeRecord(); // Use the default constructor
+        List<AdministrativeRecord> adminRecords = adminManager.getAllAdministrativeRecordsFromDatabase();
+
+        // Add administrative record data to the table model
+        for (AdministrativeRecord adminRecord : adminRecords) {
+            Object[] rowData = { adminRecord.getPatientName(), adminRecord.getPaymentAmount() };
+            adminTableModel.addRow(rowData);
+        }
+
+        adminTable = new JTable(adminTableModel);
+        JScrollPane adminTableScrollPane = new JScrollPane(adminTable);
+
+        constraints = new GridBagConstraints();
+        constraints.gridy = 4;
+        constraints.gridx = 0;
+        constraints.gridwidth = 2;
+        panel.add(adminTableScrollPane, constraints);
+
+        JButton editAdminButton = new JButton("Edit");
+        constraints.gridy = 5;
+        panel.add(editAdminButton, constraints);
+
+        editAdminButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = adminTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    String patientName = (String) adminTable.getValueAt(selectedRow, 0);
+                    double adminPayment = (double) adminTable.getValueAt(selectedRow, 1);
+
+                    EditAdminRecordDialog editAdminDialog = new EditAdminRecordDialog(frame, patientName, adminPayment);
+                    editAdminDialog.setVisible(true);
+                }
+            }
+        });
     }
+
+    class EditAdminRecordDialog extends JDialog {
+        private JTextField patientNameField;
+        private JTextField adminPaymentField;
+
+        EditAdminRecordDialog(JFrame parent, String patientName, double adminPayment) {
+            super(parent, "Edit Data Pembayaran Administrasi", true);
+
+            // Create dialog components
+            patientNameField = new JTextField(patientName, 20);
+            adminPaymentField = new JTextField(String.valueOf(adminPayment), 20);
+
+            JButton saveButton = new JButton("Simpan");
+            JButton deleteButton = new JButton("Hapus");
+
+            // Add components to the dialog using GridBagLayout
+            JPanel panel = new JPanel(new GridBagLayout());
+            GridBagConstraints constraints = new GridBagConstraints();
+            constraints.fill = GridBagConstraints.HORIZONTAL;
+            constraints.insets = new Insets(5, 5, 5, 5);
+
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            panel.add(new JLabel("Nama Pasien:"), constraints);
+            constraints.gridx = 1;
+            panel.add(patientNameField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 1;
+            panel.add(new JLabel("Pembayaran Administrasi (Rp):"), constraints);
+            constraints.gridx = 1;
+            panel.add(adminPaymentField, constraints);
+
+            constraints.gridwidth = 2;
+            constraints.gridy = 2;
+            panel.add(saveButton, constraints);
+
+            // Add delete button
+            constraints.gridy = 3;
+            panel.add(deleteButton, constraints);
+
+            // Add action for save button
+            saveButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedRow = adminTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        String originalName = (String) adminTableModel.getValueAt(selectedRow, 0); // Get the original name from the table
+                        double originalAdminPayment = (double) adminTableModel.getValueAt(selectedRow, 1);
+
+                        // Assuming you have a method in AdministrativeRecord to update data
+                        AdministrativeRecord existingAdminRecord = new AdministrativeRecord(originalName, originalAdminPayment);
+
+                        // Call the method to update administrative record data in the database
+                        existingAdminRecord.updateAdministrativeRecordInDatabase(patientNameField.getText(),
+                                Double.parseDouble(adminPaymentField.getText()));
+
+                        // Update data in the table model
+                        adminTableModel.setValueAt(patientNameField.getText(), selectedRow, 0);
+                        adminTableModel.setValueAt(Double.parseDouble(adminPaymentField.getText()), selectedRow, 1);
+                    }
+                    dispose();
+                }
+            });
+
+            // Add action for delete button
+            deleteButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedRow = adminTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        String patientName = (String) adminTable.getValueAt(selectedRow, 0);
+
+                        // Assuming you have a method in AdministrativeRecord to delete data
+                        AdministrativeRecord.deleteAdministrativeRecordFromDatabase(patientName);
+
+                        // Remove data from the table model
+                        adminTableModel.removeRow(selectedRow);
+                    }
+                    dispose();
+                }
+            });
+
+
+
+            getContentPane().add(panel);
+            pack();
+            setLocationRelativeTo(parent);
+        }
+    }
+
 
     private void addRawatInapPanelComponents(JPanel panel) {
         panel.setLayout(new GridBagLayout());

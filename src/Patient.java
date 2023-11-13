@@ -16,6 +16,10 @@ public class Patient {
         this.address = address;
     }
 
+    public Patient() {
+
+    }
+
     public String getName() {
         return name;
     }
@@ -61,14 +65,15 @@ public class Patient {
         return patients;
     }
 
+
     // 3. Update (mengubah data pasien)
-    public void updatePatientInDatabase(String name, String dob, String address) {
+    public void updatePatientInDatabase(String originalName, String updatedDOB, String updatedAddress) {
         Connection connection = Koneksi.getKoneksi();
         String sql = "UPDATE Pasient SET dateOfBirth = ?, address = ? WHERE name = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, dob);
-            statement.setString(2, address);
-            statement.setString(3, name);
+            statement.setString(1, updatedDOB);
+            statement.setString(2, updatedAddress);
+            statement.setString(3, originalName);  // Use the original name in the WHERE clause
             statement.executeUpdate();
             connection.commit();
         } catch (SQLException ex) {
