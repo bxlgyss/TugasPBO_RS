@@ -9,11 +9,16 @@ public class PaymentRecord {
     private String patientName;
     private double treatmentCost;
     private double medicineCost;
+    private Double totalCost;
 
     public PaymentRecord(String patientName, double treatmentCost, double medicineCost) {
         this.patientName = patientName;
         this.treatmentCost = treatmentCost;
         this.medicineCost = medicineCost;
+    }
+
+    public PaymentRecord() {
+
     }
 
     public String getPatientName() {
@@ -28,19 +33,23 @@ public class PaymentRecord {
         return medicineCost;
     }
 
+
     // 1. Create (menambahkan pembayaran baru)
     public void addPaymentRecordToDatabase(PaymentRecord paymentRecord) {
         Connection connection = Koneksi.getKoneksi();
-        String sql = "INSERT INTO PaymentRecord (patientName, treatmentCost, medicineCost) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO PaymentRecord (patientName, treatmentCost, medicineCost, totalCost) VALUES (?, ?, ?, ?)";
+        double totalCost = paymentRecord.getTreatmentCost() + paymentRecord.getMedicineCost();
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, paymentRecord.getPatientName());
             statement.setDouble(2, paymentRecord.getTreatmentCost());
             statement.setDouble(3, paymentRecord.getMedicineCost());
+            statement.setDouble(4, totalCost); // Simpan totalCost sebagai Double
             statement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     // 2. Read (mengambil data pembayaran)
     public List<PaymentRecord> getAllPaymentRecordsFromDatabase() {
@@ -62,7 +71,7 @@ public class PaymentRecord {
     }
 
     // 3. Update (mengubah data pembayaran)
-    public void updatePaymentRecordInDatabase(String patientName, double treatmentCost, double medicineCost) {
+    public void updatePaymentRecordInDatabase(double treatmentCost, double medicineCost) {
         Connection connection = Koneksi.getKoneksi();
         String sql = "UPDATE PaymentRecord SET treatmentCost = ?, medicineCost = ? WHERE patientName = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -85,5 +94,19 @@ public class PaymentRecord {
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public void setTreatmentCost(double v) {
+    }
+
+    public void setMedicineCost(double v) {
+    }
+
+    public Object getTotalCost() {
+        return totalCost;
+    }
+
+    public void setTotalCost(Object totalCost) {
+        this.totalCost = (Double) totalCost;
     }
 }

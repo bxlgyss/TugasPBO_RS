@@ -12,8 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 import com.mysql.jdbc.Connection;
-import com.mysql.jdbc.Driver;
-import java.sql.DriverManager;
+
 import java.sql.SQLException;
 
 
@@ -32,6 +31,11 @@ public class HospitalManagementApp {
     private DefaultTableModel diagnosisTableModel;
     private JTable adminTable;
     private DefaultTableModel adminTableModel;
+    private DefaultTableModel inpatientTableModel;
+    private JTable inpatientTable;
+    private DefaultTableModel paymentTableModel;
+    private JTable paymentTable;
+    private JTable medicalRecordTable;
 
     public HospitalManagementApp() {
         frame = new JFrame("Aplikasi Manajemen Rumah Sakit");
@@ -353,8 +357,14 @@ public class HospitalManagementApp {
         JTextField genderField = new JTextField(20);
         JTextField contactNumberField = new JTextField(20);
 
+        // Menambahkan label dan komponen untuk Nama Dokter
         addLabelAndComponent(doctorInputPanel, constraints, "Nama Dokter:", nameField);
+
+        // Mengatur ulang constraints.gridy sebelum menambahkan Spesialisasi
+        constraints.gridy++;
         addLabelAndComponent(doctorInputPanel, constraints, "Spesialisasi:", specializationField);
+
+        // Melanjutkan dengan menambahkan komponen untuk umur, jenis kelamin, dan nomor kontak
         addLabelAndComponent(doctorInputPanel, constraints, "Umur:", ageField);
         addLabelAndComponent(doctorInputPanel, constraints, "Jenis Kelamin:", genderField);
         addLabelAndComponent(doctorInputPanel, constraints, "Nomor Kontak:", contactNumberField);
@@ -422,6 +432,7 @@ public class HospitalManagementApp {
 
         // Menambahkan label dan input fields ke panel dengan GridBagLayout
         addLabelAndComponent(nurseInputPanel, constraints, "Nama Perawat:", nameField);
+        constraints.gridy++;
         addLabelAndComponent(nurseInputPanel, constraints, "Spesialisasi:", specializationField);
         addLabelAndComponent(nurseInputPanel, constraints, "Umur:", ageField);
         addLabelAndComponent(nurseInputPanel, constraints, "Jenis Kelamin:", genderField);
@@ -493,6 +504,7 @@ public class HospitalManagementApp {
 
         // Menambahkan label dan input fields ke panel dengan GridBagLayout
         addLabelAndComponent(medicineInputPanel, constraints, "Nama Obat:", nameField);
+        constraints.gridy++;
         addLabelAndComponent(medicineInputPanel, constraints, "Tipe Obat:", typeField);
         addLabelAndComponent(medicineInputPanel, constraints, "Deskripsi:", new JScrollPane(descriptionArea));
 
@@ -567,6 +579,7 @@ public class HospitalManagementApp {
         JTextArea notesArea = new JTextArea(4, 20);
 
         addLabelAndComponent(diagnosisInputPanel, constraints, "Nama Pasien:", patientNameField);
+        constraints.gridy++;
         addLabelAndComponent(diagnosisInputPanel, constraints, "Penyakit:", diseaseField);
         addLabelAndComponent(diagnosisInputPanel, constraints, "Catatan:", notesArea);
 
@@ -1010,8 +1023,6 @@ public class HospitalManagementApp {
                 }
             });
 
-
-
             getContentPane().add(panel);
             pack();
             setLocationRelativeTo(parent);
@@ -1066,7 +1077,7 @@ public class HospitalManagementApp {
         panel.add(nurseField, constraints);
 
         constraints.gridwidth = 2;
-        constraints.gridy = 5;
+        constraints.gridy = 5 ;
         constraints.gridx = 0;
         JButton catatRawatInapButton = new JButton("Catat Rawat Inap Pasien");
         panel.add(catatRawatInapButton, constraints);
@@ -1093,8 +1104,157 @@ public class HospitalManagementApp {
                 nurseField.setText("");
             }
         });
+        // Your existing code for addRawatInapPanelComponents method
+        String[] inpatientColumnNames = { "Nama Pasien", "Jenis Kamar", "Diagnosis", "Perawat Bertanggung Jawab" };
+        inpatientTableModel = new DefaultTableModel(inpatientColumnNames, 0);
+
+        // Get all inpatient records from the database
+        InpatientRecord inpatientManager; // Use the default constructor
+        inpatientManager = new InpatientRecord();
+        List<InpatientRecord> inpatientRecords = inpatientManager.getAllInpatientRecordsFromDatabase();
+
+        // Add inpatient record data to the table model
+        for (InpatientRecord inpatientRecord : inpatientRecords) {
+            Object[] rowData = { inpatientRecord.getPatientName(), inpatientRecord.getRoomType(),
+                    inpatientRecord.getDiagnosis(), inpatientRecord.getResponsibleNurse() };
+            inpatientTableModel.addRow(rowData);
+        }
+
+        inpatientTable = new JTable(inpatientTableModel);
+        JScrollPane inpatientTableScrollPane = new JScrollPane(inpatientTable);
+
+        constraints = new GridBagConstraints();
+        constraints.gridy = 5;  // Adjust the gridy value based on your layout
+        constraints.gridx = 0;
+        constraints.gridwidth = 2;
+        panel.add(inpatientTableScrollPane, constraints);
+
+        JButton editInpatientButton = new JButton("Edit");
+        constraints.gridy = 6;  // Adjust the gridy value based on your layout
+        panel.add(editInpatientButton, constraints);
+
+        editInpatientButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = inpatientTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    String patientName = (String) inpatientTableModel.getValueAt(selectedRow, 0);
+                    String roomType = (String) inpatientTableModel.getValueAt(selectedRow, 1);
+                    String diagnosis = (String) inpatientTableModel.getValueAt(selectedRow, 2);
+                    String nurse = (String) inpatientTableModel.getValueAt(selectedRow, 3);
+
+                    EditInpatientRecordDialog editInpatientDialog = new EditInpatientRecordDialog(frame, patientName, roomType, diagnosis, nurse);
+                    editInpatientDialog.setVisible(true);
+                }
+            }
+        });
+
     }
-    private void addPembayaranPanelComponents(JPanel panel) {
+
+    class EditInpatientRecordDialog extends JDialog {
+        private JTextField patientNameField;
+        private JTextField roomTypeField;
+        private JTextField diagnosisField;
+        private JTextField nurseField;
+
+        EditInpatientRecordDialog(JFrame parent, String patientName, String roomType, String diagnosis, String nurse) {
+            super(parent, "Edit Data Rawat Inap Pasien", true);
+
+            // Create dialog components
+            patientNameField = new JTextField(patientName, 20);
+            roomTypeField = new JTextField(roomType, 20);
+            diagnosisField = new JTextField(diagnosis, 20);
+            nurseField = new JTextField(nurse, 20);
+
+            JButton saveButton = new JButton("Simpan");
+            JButton deleteButton = new JButton("Hapus");
+
+            // Add components to the dialog using GridBagLayout
+            JPanel panel = new JPanel(new GridBagLayout());
+            GridBagConstraints constraints = new GridBagConstraints();
+            constraints.fill = GridBagConstraints.HORIZONTAL;
+            constraints.insets = new Insets(5, 5, 5, 5);
+
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            panel.add(new JLabel("Nama Pasien:"), constraints);
+            constraints.gridx = 1;
+            panel.add(patientNameField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 1;
+            panel.add(new JLabel("Jenis Kamar:"), constraints);
+            constraints.gridx = 1;
+            panel.add(roomTypeField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 2;
+            panel.add(new JLabel("Diagnosis:"), constraints);
+            constraints.gridx = 1;
+            panel.add(diagnosisField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 3;
+            panel.add(new JLabel("Perawat Bertanggung Jawab:"), constraints);
+            constraints.gridx = 1;
+            panel.add(nurseField, constraints);
+
+            constraints.gridwidth = 2;
+            constraints.gridy = 4;
+            panel.add(saveButton, constraints);
+
+            // Add delete button
+            constraints.gridy = 5;
+            panel.add(deleteButton, constraints);
+
+            saveButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedRow = inpatientTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        String originalName = (String) inpatientTableModel.getValueAt(selectedRow, 0); // Get the original name from the table
+                        String originalRoomType = (String) inpatientTableModel.getValueAt(selectedRow, 1);
+                        String originalDiagnosis = (String) inpatientTableModel.getValueAt(selectedRow, 2);
+                        String originalNurse = (String) inpatientTableModel.getValueAt(selectedRow, 3);
+
+                        // Assuming you have a method in InpatientRecord to update data
+                        InpatientRecord existingInpatientRecord = new InpatientRecord(originalName, originalRoomType, originalDiagnosis, originalNurse);
+
+                        // Call the method to update inpatient record data in the database
+                        existingInpatientRecord.updateInpatientRecordInDatabase(patientNameField.getText(),
+                                roomTypeField.getText(), diagnosisField.getText(), nurseField.getText());
+
+                        // Update data in the table model
+                        inpatientTableModel.setValueAt(patientNameField.getText(), selectedRow, 0);
+                        inpatientTableModel.setValueAt(roomTypeField.getText(), selectedRow, 1);
+                        inpatientTableModel.setValueAt(diagnosisField.getText(), selectedRow, 2);
+                        inpatientTableModel.setValueAt(nurseField.getText(), selectedRow, 3);
+                    }
+                    dispose();
+                }
+            });
+
+            deleteButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    // Assuming you have a method in InpatientRecord to delete data
+                    InpatientRecord.deleteInpatientRecordFromDatabase(patientNameField.getText());
+
+                    // Remove data from the table model
+                    int selectedRow = inpatientTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        inpatientTableModel.removeRow(selectedRow);
+                    }
+                    dispose();
+                }
+            });
+            getContentPane().add(panel);
+            pack();
+            setLocationRelativeTo(parent);
+        }
+    }
+
+        private void addPembayaranPanelComponents(JPanel panel) {
         panel.setLayout(new GridBagLayout());
 
         GridBagConstraints constraints = new GridBagConstraints();
@@ -1156,11 +1316,155 @@ public class HospitalManagementApp {
                 // Simpan data di database
                 paymentRecord.addPaymentRecordToDatabase(paymentRecord);
 
+                // Update data in the payment table
+                String[] rowData = {patientName, treatmentCost, medicineCost, String.valueOf(totalCost)};
+                paymentTableModel.addRow(rowData);
+
                 patientNameField.setText("");
                 treatmentCostField.setText("");
                 medicineCostField.setText("");
             }
         });
+        // Code for displaying and editing payment record data
+        String[] paymentColumnNames = { "Nama Pasien", "Biaya Perawatan (Rp)", "Biaya Obat-obatan (Rp)", "Total Biaya (Rp)" };
+        paymentTableModel = new DefaultTableModel(paymentColumnNames, 0);
+
+        // Get all payment records from the database
+        PaymentRecord paymentManager = new PaymentRecord(); // Use the default constructor
+        List<PaymentRecord> paymentRecords = paymentManager.getAllPaymentRecordsFromDatabase();
+
+        // Add payment record data to the table model
+        for (PaymentRecord paymentRecord : paymentRecords) {
+            Object[] rowData = {paymentRecord.getPatientName(), paymentRecord.getTreatmentCost(), paymentRecord.getMedicineCost(), paymentRecord.getTotalCost()};
+            paymentTableModel.addRow(rowData);
+        }
+
+        paymentTable = new JTable(paymentTableModel);
+        JScrollPane paymentTableScrollPane = new JScrollPane(paymentTable);
+
+        constraints.gridy = 7; // Adjust the index according to your layout
+        panel.add(paymentTableScrollPane, constraints);
+
+        JButton editPaymentButton = new JButton("Edit Pembayaran");
+        constraints.gridy = 8; // Adjust the index according to your layout
+        panel.add(editPaymentButton, constraints);
+
+        editPaymentButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = paymentTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    String patientName = (String) paymentTable.getValueAt(selectedRow, 0);
+                    Double treatmentCost = (Double) paymentTable.getValueAt(selectedRow, 1);
+                    Double medicineCost = (Double) paymentTable.getValueAt(selectedRow, 2);
+
+                    EditPaymentDialog editDialog = new EditPaymentDialog(frame, patientName, treatmentCost, medicineCost);
+                    editDialog.setVisible(true);
+                }
+            }
+        });
+    }
+
+    class EditPaymentDialog extends JDialog {
+        private JTextField patientNameField;
+        private JTextField treatmentCostField;
+        private JTextField medicineCostField;
+
+        EditPaymentDialog(JFrame parent, String patientName, Double treatmentCost, Double medicineCost) {
+            super(parent, "Edit Pembayaran", true);
+
+            // Create dialog components
+            patientNameField = new JTextField(patientName, 20);// Assuming you're setting a JTextField with a Double value
+            treatmentCostField = new JTextField(String.valueOf(treatmentCost), 20);
+            medicineCostField = new JTextField(String.valueOf (medicineCost),20);
+
+            JButton saveButton = new JButton("Simpan");
+            JButton deleteButton = new JButton("Hapus");
+
+            // Add components to the dialog with GridBagLayout
+            JPanel panel = new JPanel(new GridBagLayout());
+            GridBagConstraints constraints = new GridBagConstraints();
+            constraints.fill = GridBagConstraints.HORIZONTAL;
+            constraints.insets = new Insets(5, 5, 5, 5);
+
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            panel.add(new JLabel("Nama Pasien:"), constraints);
+            constraints.gridx = 1;
+            panel.add(patientNameField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 1;
+            panel.add(new JLabel("Biaya Perawatan (Rp):"), constraints);
+            constraints.gridx = 1;
+            panel.add(treatmentCostField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 2;
+            panel.add(new JLabel("Biaya Obat-obatan (Rp):"), constraints);
+            constraints.gridx = 1;
+            panel.add(medicineCostField, constraints);
+
+            constraints.gridwidth = 2;
+            constraints.gridy = 3;
+            panel.add(saveButton, constraints);
+
+            // Add Delete button components
+            constraints.gridy = 4;
+            panel.add(deleteButton, constraints);
+
+            saveButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedRow = paymentTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        String originalPatientName = (String) paymentTableModel.getValueAt(selectedRow, 0);
+                        String updatedTreatmentCost = treatmentCostField.getText();
+                        String updatedMedicineCost = medicineCostField.getText();
+
+                        // Create an object of PaymentRecord with existing data
+                        PaymentRecord existingPaymentRecord = new PaymentRecord(originalPatientName, 0, 0);
+                        existingPaymentRecord.setTreatmentCost(Double.parseDouble(updatedTreatmentCost));
+                        existingPaymentRecord.setMedicineCost(Double.parseDouble(updatedMedicineCost));
+
+                        // Call the method to update payment record data in the database
+                        existingPaymentRecord.updatePaymentRecordInDatabase(Double.parseDouble(updatedTreatmentCost), Double.parseDouble(updatedMedicineCost));
+
+                        // Update data in the payment table model
+                        paymentTableModel.setValueAt(updatedTreatmentCost, selectedRow, 1);
+                        paymentTableModel.setValueAt(updatedMedicineCost, selectedRow, 2);
+                        double totalCost = Double.parseDouble(updatedTreatmentCost) + Double.parseDouble(updatedMedicineCost);
+                        paymentTableModel.setValueAt(String.valueOf(totalCost), selectedRow, 3);
+                    }
+                    dispose();
+                }
+            });
+
+            // Add action for the Delete button
+            deleteButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedRow = paymentTable.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        String patientName = (String) paymentTableModel.getValueAt(selectedRow, 0);
+
+                        // Create an object of PaymentRecord
+                        PaymentRecord existingPaymentRecord = new PaymentRecord(patientName, 0, 0);
+
+                        // Call the method to delete payment record data
+                        existingPaymentRecord.deletePaymentRecordFromDatabase(patientName);
+
+                        // Remove data from the payment table model
+                        paymentTableModel.removeRow(selectedRow);
+                    }
+                    dispose(); // Close the edit dialog
+                }
+            });
+
+            getContentPane().add(panel);
+            pack();
+            setLocationRelativeTo(parent);
+        }
     }
 
     private void addRekapMedisPanelComponents(JPanel panel) {
@@ -1189,8 +1493,12 @@ public class HospitalManagementApp {
         constraints.gridx = 0;
         panel.add(new JLabel("Pemeriksaan Medis:"), constraints);
 
+        // Contoh perbaikan untuk medicalExaminationField
         JTextArea medicalExaminationField = new JTextArea(5, 20);
+        medicalExaminationField.setLineWrap(true);
+        medicalExaminationField.setWrapStyleWord(true);
         JScrollPane examinationScrollPane = new JScrollPane(medicalExaminationField);
+
         constraints.gridx = 1;
         panel.add(examinationScrollPane, constraints);
 
@@ -1226,12 +1534,16 @@ public class HospitalManagementApp {
                 String progressNotes = progressNotesField.getText();
                 String prescription = prescriptionField.getText();
 
-                // Handle pencatatan rekap medis pasien
                 MedicalSummary medicalSummary = new MedicalSummary(patientName, medicalExamination, progressNotes, prescription);
                 medicalSummaries.add(medicalSummary);
 
                 // Simpan data di database
                 medicalSummary.addMedicalSummaryToDatabase(medicalSummary);
+
+                // Update table model
+                Object[] rowData = {medicalSummary.getPatientName(), medicalSummary.getMedicalExamination(), medicalSummary.getProgressNotes(), medicalSummary.getPrescription()};
+                tableModel.addRow(rowData);
+                tableModel.fireTableDataChanged();
 
                 JOptionPane.showMessageDialog(frame, "Rekap medis pasien " + patientName + " berhasil dicatat.");
                 patientNameField.setText("");
@@ -1240,8 +1552,179 @@ public class HospitalManagementApp {
                 prescriptionField.setText("");
             }
         });
+// Display and edit medical record data
+        String[] medicalRecordColumnNames = { "Nama Pasien", "Pemeriksaan Medis", "Catatan Perkembangan", "Resep Obat" };
+        tableModel = new DefaultTableModel(medicalRecordColumnNames, 0);
+
+// Get all medical records from the database
+        MedicalSummary medicalSummaryManager = new MedicalSummary();
+        List<MedicalSummary> medicalSummaries = medicalSummaryManager.getAllMedicalSummariesFromDatabase();
+
+// Add medical record data to the table model
+        for (MedicalSummary medicalSummary : medicalSummaries) {
+            Object[] rowData = {medicalSummary.getPatientName(), medicalSummary.getMedicalExamination(), medicalSummary.getProgressNotes(), medicalSummary.getPrescription()};
+            tableModel.addRow(rowData);
+        }
+
+// Buat JTable hanya sekali, dan gunakan selama aplikasi berjalan
+        JTable medicalRecordTable = new JTable(tableModel);
+        medicalRecordTable.setAutoCreateRowSorter(true);
+
+// Set preferred size for better display
+        medicalRecordTable.setPreferredScrollableViewportSize(new Dimension(500, 300));
+
+        JScrollPane medicalRecordTableScrollPane = new JScrollPane(medicalRecordTable);
+
+// Tambahkan medicalRecordTableScrollPane ke panel Anda
+        constraints.gridy = 6;
+        constraints.gridx = 0;
+        constraints.gridwidth = 2;
+        constraints.fill = GridBagConstraints.BOTH; // Fills the available space
+        panel.add(medicalRecordTableScrollPane, constraints);
+
+
+        JButton editMedicalRecordButton = new JButton("Edit Rekam Medis");
+        constraints.gridy = 7;
+        panel.add(editMedicalRecordButton, constraints);
+
+        editMedicalRecordButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = medicalRecordTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    String patientName = (String) medicalRecordTable.getValueAt(selectedRow, 0);
+                    String medicalExamination = (String) medicalRecordTable.getValueAt(selectedRow, 1);
+                    String progressNotes = (String) medicalRecordTable.getValueAt(selectedRow, 2);
+                    String prescription = (String) medicalRecordTable.getValueAt(selectedRow, 3);
+
+                    // Teruskan referensi medicalRecordTable saat membuat EditMedicalSummaryDialog
+                    EditMedicalSummaryDialog editMedicalSummaryDialog = new EditMedicalSummaryDialog(frame, patientName, medicalExamination, progressNotes, prescription, medicalRecordTable);
+                    editMedicalSummaryDialog.setVisible(true);
+                }
+            }
+        });
+
     }
 
+    class EditMedicalSummaryDialog extends JDialog {
+        private JTextField patientNameField;
+        private JTextArea medicalExaminationField;
+        private JTextArea progressNotesField;
+        private JTextArea prescriptionField;
+
+        EditMedicalSummaryDialog(JFrame parent, String patientName, String medicalExamination, String progressNotes, String prescription, JTable medicalRecordTable) {
+            super(parent, "Edit Data Rekam Medis", true);
+
+            // Initialize components
+            patientNameField = new JTextField(patientName, 20);
+            medicalExaminationField = new JTextArea(medicalExamination, 5, 20);
+            progressNotesField = new JTextArea(progressNotes, 5, 20);
+            prescriptionField = new JTextArea(prescription, 5, 20);
+
+            JButton saveButton = new JButton("Simpan");
+            JButton deleteButton = new JButton("Hapus");
+
+            // Add components to the dialog using GridBagLayout
+            JPanel panel = new JPanel(new GridBagLayout());
+            GridBagConstraints constraints = new GridBagConstraints();
+            constraints.fill = GridBagConstraints.HORIZONTAL;
+            constraints.insets = new Insets(5, 5, 5, 5);
+
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            panel.add(new JLabel("Nama Pasien:"), constraints);
+            constraints.gridx = 1;
+            panel.add(patientNameField, constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 1;
+            panel.add(new JLabel("Pemeriksaan Medis:"), constraints);
+            constraints.gridx = 1;
+            panel.add(new JScrollPane(medicalExaminationField), constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 2;
+            panel.add(new JLabel("Catatan Perkembangan:"), constraints);
+            constraints.gridx = 1;
+            panel.add(new JScrollPane(progressNotesField), constraints);
+
+            constraints.gridx = 0;
+            constraints.gridy = 3;
+            panel.add(new JLabel("Resep Obat:"), constraints);
+            constraints.gridx = 1;
+            panel.add(new JScrollPane(prescriptionField), constraints);
+
+            constraints.gridwidth = 2;
+            constraints.gridy = 4;
+            constraints.gridx = 0;
+            panel.add(saveButton, constraints);
+
+            constraints.gridy = 5;
+            panel.add(deleteButton, constraints);
+
+            // Add action listeners for buttons
+            saveButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    // Retrieve updated data from the fields
+                    String updatedPatientName = patientNameField.getText();
+                    String updatedMedicalExamination = medicalExaminationField.getText();
+                    String updatedProgressNotes = progressNotesField.getText();
+                    String updatedPrescription = prescriptionField.getText();
+
+                    // Create an object with the original data
+                    MedicalSummary originalMedicalSummary = new MedicalSummary(patientName, medicalExamination, progressNotes, prescription);
+
+                    // Update the medical summary in the database
+                    if (originalMedicalSummary.updateMedicalSummaryInDatabase(updatedPatientName, updatedMedicalExamination, updatedProgressNotes, updatedPrescription)) {
+                        JOptionPane.showMessageDialog(EditMedicalSummaryDialog.this, "Data rekam medis berhasil diperbarui");
+
+                        // Get the selected row index
+                        int selectedRow = medicalRecordTable.getSelectedRow();
+
+                        // Update the values in the table model
+                        tableModel.setValueAt(updatedPatientName, selectedRow, 0);
+                        tableModel.setValueAt(updatedMedicalExamination, selectedRow, 1);
+                        tableModel.setValueAt(updatedProgressNotes, selectedRow, 2);
+                        tableModel.setValueAt(updatedPrescription, selectedRow, 3);
+
+                        tableModel.fireTableDataChanged();
+                    } else {
+                        JOptionPane.showMessageDialog(EditMedicalSummaryDialog.this, "Gagal memperbarui data rekam medis");
+                    }
+                    dispose(); // Close the dialog
+                }
+            });
+
+            deleteButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    // Create an object with the original data
+                    MedicalSummary medicalSummaryToDelete = new MedicalSummary(patientName, medicalExamination, progressNotes, prescription);
+
+                    // Delete the medical summary from the database
+                    if (medicalSummaryToDelete.deleteMedicalSummaryFromDatabase()) {
+                        JOptionPane.showMessageDialog(EditMedicalSummaryDialog.this, "Data rekam medis berhasil dihapus");
+
+                        // Get the selected row index
+                        int selectedRow = medicalRecordTable.getSelectedRow();
+
+                        // Remove the row from the table model
+                        tableModel.removeRow(selectedRow);
+                        tableModel.fireTableDataChanged();
+                    } else {
+                        JOptionPane.showMessageDialog(EditMedicalSummaryDialog.this, "Gagal menghapus data rekam medis");
+                    }
+                    dispose(); // Close the dialog
+                }
+            });
+
+            getContentPane().add(panel);
+            pack();
+            setLocationRelativeTo(parent);
+        }
+
+    }
     private void generateDataMasterReport() {
         // Buat laporan Data Master dengan data dokter, perawat, obat-obatan, dan diagnosis
         StringBuilder report = new StringBuilder();
@@ -1267,14 +1750,17 @@ public class HospitalManagementApp {
 
     }
     private void generatePendaftaranReport() {
+        Patient patient = new Patient();
+        List<Patient> registeredPatients = patient.getAllPatientsFromDatabase();
+
         if (registeredPatients.isEmpty()) {
             JOptionPane.showMessageDialog(frame, "Tidak ada data pendaftaran pasien.");
         } else {
-            StringBuilder report = new StringBuilder("Laporan Pendaftaran Pasien:\n");
-            for (Patient patient : registeredPatients) {
-                report.append("Nama: ").append(patient.getName()).append("\n");
-                report.append("Tanggal Lahir: ").append(patient.getDateOfBirth()).append("\n");
-                report.append("Alamat: ").append(patient.getAddress()).append("\n\n");
+            StringBuilder report = new StringBuilder("\tLaporan Pendaftaran Pasien\n\n");
+            for (Patient registeredPatient : registeredPatients) {
+                report.append("Nama          : ").append(registeredPatient.getName()).append("\n");
+                report.append("Tanggal Lahir : ").append(registeredPatient.getDateOfBirth()).append("\n");
+                report.append("Alamat        : ").append(registeredPatient.getAddress()).append("\n\n");
             }
 
             displayReport("Laporan Pendaftaran", report.toString());
@@ -1282,34 +1768,42 @@ public class HospitalManagementApp {
     }
 
     private void generateAdministrasiReport() {
+        AdministrativeRecord adminRecord = new AdministrativeRecord();
+        List<AdministrativeRecord> administrativeRecords = adminRecord.getAllAdministrativeRecordsFromDatabase();
+
         if (administrativeRecords.isEmpty()) {
             JOptionPane.showMessageDialog(frame, "Tidak ada data administrasi pembayaran.");
         } else {
-            StringBuilder report = new StringBuilder("Laporan Administrasi Pembayaran:\n");
+            StringBuilder report = new StringBuilder("\tLaporan Administrasi Pembayaran\n\n");
             for (AdministrativeRecord record : administrativeRecords) {
-                report.append("Nama Pasien: ").append(record.getPatientName()).append("\n");
-                report.append("Pembayaran Administrasi: ").append(record.getPaymentAmount()).append("\n\n");
+                report.append("Nama Pasien             : ").append(record.getPatientName()).append("\n");
+                report.append("Pembayaran Administrasi : ").append(record.getPaymentAmount()).append("\n\n");
             }
 
             displayReport("Laporan Administrasi", report.toString());
         }
     }
 
+
     private void generateRawatInapReport() {
+        InpatientRecord inpatientRecord = new InpatientRecord();
+        List<InpatientRecord> inpatientRecords = inpatientRecord.getAllInpatientRecordsFromDatabase();
+
         if (inpatientRecords.isEmpty()) {
             JOptionPane.showMessageDialog(frame, "Tidak ada data rawat inap pasien.");
         } else {
-            StringBuilder report = new StringBuilder("Laporan Rawat Inap Pasien:\n");
+            StringBuilder report = new StringBuilder("\tLaporan Rawat Inap Pasien\n\n");
             for (InpatientRecord record : inpatientRecords) {
-                report.append("Nama Pasien: ").append(record.getPatientName()).append("\n");
-                report.append("Jenis Kamar: ").append(record.getRoomType()).append("\n");
-                report.append("Diagnosis: ").append(record.getDiagnosis()).append("\n");
+                report.append("Nama Pasien              : ").append(record.getPatientName()).append("\n");
+                report.append("Jenis Kamar              : ").append(record.getRoomType()).append("\n");
+                report.append("Diagnosis                : ").append(record.getDiagnosis()).append("\n");
                 report.append("Perawat Bertanggung Jawab: ").append(record.getResponsibleNurse()).append("\n\n");
             }
 
             displayReport("Laporan Rawat Inap", report.toString());
         }
     }
+
     private void displayReport(String title, String content) {
         JTextArea textArea = new JTextArea(content);
         JScrollPane scrollPane = new JScrollPane(textArea);
@@ -1320,56 +1814,42 @@ public class HospitalManagementApp {
         JOptionPane.showMessageDialog(frame, scrollPane, title, JOptionPane.PLAIN_MESSAGE);
     }
     private void generatePembayaranReport() {
+        PaymentRecord paymentRecord = new PaymentRecord();
+        List<PaymentRecord> paymentRecords = paymentRecord.getAllPaymentRecordsFromDatabase();
+
         if (paymentRecords.isEmpty()) {
             JOptionPane.showMessageDialog(frame, "Tidak ada data pembayaran rawat inap pasien.");
         } else {
-            StringBuilder report = new StringBuilder("Laporan Pembayaran Rawat Inap Pasien:\n");
+            StringBuilder report = new StringBuilder("\tLaporan Pembayaran Rawat Inap Pasien\n\n");
             for (PaymentRecord record : paymentRecords) {
-                report.append("Nama Pasien: ").append(record.getPatientName()).append("\n");
-                report.append("Biaya Perawatan: ").append(record.getTreatmentCost()).append("\n");
-                report.append("Biaya Obat-obatan: ").append(record.getMedicineCost()).append("\n\n");
+                report.append("Nama Pasien       : ").append(record.getPatientName()).append("\n");
+                report.append("Biaya Perawatan   : ").append(record.getTreatmentCost()).append("\n");
+                report.append("Biaya Obat-obatan : ").append(record.getMedicineCost()).append("\n\n");
             }
 
             displayReport("Laporan Pembayaran", report.toString());
         }
     }
 
+
     private void generateRekapMedisReport() {
+        MedicalSummary medicalSummaryManager = new MedicalSummary();
+        List<MedicalSummary> medicalSummaries = medicalSummaryManager.getAllMedicalSummariesFromDatabase();
+
         if (medicalSummaries.isEmpty()) {
             JOptionPane.showMessageDialog(frame, "Tidak ada data rekap medis pasien.");
         } else {
-            StringBuilder report = new StringBuilder("Laporan Rekap Medis Pasien:\n");
+            StringBuilder report = new StringBuilder("\tLaporan Rekap Medis Pasien\n\n");
             for (MedicalSummary summary : medicalSummaries) {
-                report.append("Nama Pasien: ").append(summary.getPatientName()).append("\n");
-                report.append("Pemeriksaan Medis: ").append(summary.getMedicalExamination()).append("\n");
-                report.append("Catatan Perkembangan: ").append(summary.getProgressNotes()).append("\n");
-                report.append("Resep Obat: ").append(summary.getPrescription()).append("\n\n");
+                report.append("Nama Pasien           : ").append(summary.getPatientName()).append("\n");
+                report.append("Pemeriksaan Medis     : ").append(summary.getMedicalExamination()).append("\n");
+                report.append("Catatan Perkembangan  : ").append(summary.getProgressNotes()).append("\n");
+                report.append("Resep Obat            : ").append(summary.getPrescription()).append("\n\n");
             }
-
-            // Tampilkan laporan dalam jendela dialog dengan GridBagLayout
-            JDialog reportDialog = new JDialog();
-            reportDialog.setLayout(new GridBagLayout());
-
-            GridBagConstraints constraints = new GridBagConstraints();
-            constraints.insets = new Insets(5, 5, 5, 5);
-            constraints.anchor = GridBagConstraints.WEST;
-
-            JTextArea textArea = new JTextArea(report.toString());
-            textArea.setWrapStyleWord(true);
-            textArea.setLineWrap(true);
-            JScrollPane scrollPane = new JScrollPane(textArea);
-            scrollPane.setPreferredSize(new Dimension(400, 300));
-
-            constraints.gridwidth = 2;
-            constraints.gridx = 0;
-            constraints.gridy = 0;
-            reportDialog.add(scrollPane, constraints);
-
-            reportDialog.setTitle("Laporan Rekap Medis");
-            reportDialog.pack();
-            reportDialog.setVisible(true);
+            displayReport("Laporan Rekam Medis ", report.toString());
         }
     }
+
 
     public static void main(String[] args) throws SQLException {
         SwingUtilities.invokeLater(() -> {

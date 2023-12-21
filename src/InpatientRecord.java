@@ -18,6 +18,10 @@ public class InpatientRecord {
         this.responsibleNurse = responsibleNurse;
     }
 
+    public InpatientRecord() {
+
+    }
+
     public String getPatientName() {
         return patientName;
     }
@@ -85,7 +89,7 @@ public class InpatientRecord {
     }
 
     // 4. Delete (menghapus data pasien rawat inap)
-    public void deleteInpatientRecordFromDatabase(String patientName) {
+    public static void deleteInpatientRecordFromDatabase(String patientName) {
         Connection connection = Koneksi.getKoneksi();
         String sql = "DELETE FROM InpatientRecord WHERE patientName = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

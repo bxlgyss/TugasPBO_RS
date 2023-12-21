@@ -19,6 +19,10 @@ public class MedicalSummary {
         this.prescription = prescription;
     }
 
+    public MedicalSummary() {
+
+    }
+
     // Getter dan Setter untuk setiap atribut (patientName, medicalExamination, progressNotes, prescription)
     public String getPatientName() {
         return patientName;
@@ -88,7 +92,7 @@ public class MedicalSummary {
     }
 
     // 3. Update (mengubah data ringkasan medis)
-    public void updateMedicalSummaryInDatabase(String patientName, String medicalExamination, String progressNotes, String prescription) {
+    public boolean updateMedicalSummaryInDatabase(String patientName, String medicalExamination, String progressNotes, String prescription) {
         Connection connection = Koneksi.getKoneksi();
         String sql = "UPDATE MedicalSummary SET medicalExamination = ?, progressNotes = ?, prescription = ? WHERE patientName = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -96,22 +100,27 @@ public class MedicalSummary {
             statement.setString(2, progressNotes);
             statement.setString(3, prescription);
             statement.setString(4, patientName);
-            statement.executeUpdate();
+            int rowsAffected = statement.executeUpdate();
+            return rowsAffected > 0; // Return true if at least one row is affected
         } catch (SQLException ex) {
             ex.printStackTrace();
+            return false;
         }
     }
 
     // 4. Delete (menghapus ringkasan medis)
-    public void deleteMedicalSummaryFromDatabase(String patientName) {
+    public boolean deleteMedicalSummaryFromDatabase() {
         Connection connection = Koneksi.getKoneksi();
         String sql = "DELETE FROM MedicalSummary WHERE patientName = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, patientName);
-            statement.executeUpdate();
+            int rowsAffected = statement.executeUpdate();
+            return rowsAffected > 0; // Return true if at least one row is affected
         } catch (SQLException ex) {
             ex.printStackTrace();
+            return false;
         }
     }
+
 }
 
